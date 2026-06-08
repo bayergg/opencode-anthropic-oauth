@@ -335,18 +335,19 @@ const plugin: Plugin = async ({ client }) => {
             const url = input instanceof Request ? input.url : input.toString()
             // No ?beta=true (pi-mono doesn't add it)
 
-            // Transform body: replace the first system entry (OpenCode's prompt)
-            // with the Claude Code identity. All other entries (from other
-            // plugins like oh-my-openagent) are kept intact. Anthropic only
-            // checks the first system entry for billing routing.
+            // Prepend the Claude Code identity as the first system entry
+            // for billing routing. The original system prompt (including
+            // AGENTS.md, user instructions, skills, etc.) is preserved in
+            // subsequent entries.
             let body = init?.body
             if (typeof body === "string" && url.includes("/v1/messages")) {
               try {
                 const parsed = JSON.parse(body)
+                const identity = { type: "text", text: SYSTEM_IDENTITY }
                 if (Array.isArray(parsed.system) && parsed.system.length > 0) {
-                  parsed.system[0] = { type: "text", text: SYSTEM_IDENTITY }
+                  parsed.system.unshift(identity)
                 } else {
-                  parsed.system = [{ type: "text", text: SYSTEM_IDENTITY }]
+                  parsed.system = [identity]
                 }
                 body = JSON.stringify(parsed)
               } catch {
